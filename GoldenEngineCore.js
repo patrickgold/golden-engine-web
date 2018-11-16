@@ -30,6 +30,7 @@ class GoldenEngine {
             controller: new Controller2D(),
             doRenderLoop: false,
             map: new Map2D(GoldenEngine.getClientWidth(), GoldenEngine.getClientHeight()),
+            requestID: 0,
             screen: document.createElement("canvas"),
             width: GoldenEngine.getClientWidth(),
             height: GoldenEngine.getClientHeight()
@@ -37,6 +38,16 @@ class GoldenEngine {
         this.screen = screen;
         this.width = width;
         this.height = height;
+
+        // define requestAnimationFrame functions and fallbacks, if browsers not support it.
+        window.requestAnimationFrame = window.requestAnimationFrame
+            || window.mozRequestAnimationFrame
+            || window.webkitRequestAnimationFrame
+            || window.msRequestAnimationFrame
+            || function(f) { return setTimeout(f, 1000/30); };
+        window.cancelAnimationFrame = window.cancelAnimationFrame
+            || window.mozCancelAnimationFrame
+            || function(requestID) { clearTimeout(requestID); };
     }
     
     /** Gets or sets the controller for the rendering canvas. */
@@ -103,15 +114,13 @@ class GoldenEngine {
         ctx.setTransform(1,0,0,1,0,0);
         return true;
     }
-    beginRenderLoop(fps = 24) {
+    beginRenderLoop() {
         this._.doRenderLoop = true;
-        var self = this;
-        // #TODO: build as requestAnimationFrame() !!!!!!!!!!1
-        var rLoop = setInterval(function () { self.coreRenderStep.call(self); }, 1000 / fps);
+        this._.requestID = requestAnimationFrame(this.coreRenderStep.bind(this));
     }
     stopRenderLoop() {
         this._.doRenderLoop = false;
-        clearInterval(rLoop);
+        cancelAnimationFrame(this._.requestID);
     }
     coreRenderStep() {
         console.info("coreRenderStep()");
@@ -134,7 +143,6 @@ class GoldenEngine {
         cam.maxY = cam.position.y + cam.height + 1;
         //console.log(cam);
         // main loop through all layers (already sorted)
-        var tmp = new Image();
         var layers = this._.map.getLayers();
         for (var i = 0; i < layers.length; i++) {
             // draw background
@@ -163,19 +171,8 @@ class GoldenEngine {
                     || obj.position.y + obj.renderHeight < cam.minY)
                     continue;
                 // if not draw image data
-                //console.info("img put");
-                // ctx.putImageData(
-                //     obj.getRawImageData(), 
-                //     obj.position.x - cam.position.x, 
-                //     obj.position.y - cam.position.y, 
-                //     0, 
-                //     0, 
-                //     obj.renderWidth * (this._.width / cam.width), 
-                //     obj.renderHeight * (this._.height / cam.height)
-                // );
-                tmp.src = obj.getDataURL();
                 ctx.drawImage(
-                    tmp, 
+                    obj.data, 
                     obj.position.x - cam.position.x, 
                     obj.position.y - cam.position.y,
                     obj.renderWidth * (this._.width / cam.width), 
@@ -183,6 +180,7 @@ class GoldenEngine {
                 );
             }
         }
+        this._.requestID = requestAnimationFrame(this.coreRenderStep.bind(this));
     }
 
     /**
