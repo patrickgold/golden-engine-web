@@ -13,6 +13,7 @@
 const GOLDEN_ENGINE_MAP_JS = true;
 
 
+
 /**
  * The map for the web application.
  */
@@ -106,6 +107,7 @@ class Map2D {
         this._.layer.length = 0;
     }
 }
+
 
 
 /**
@@ -211,6 +213,7 @@ class Layer2D {
 }
 
 
+
 /**
  * The background for a Layer2D.
  */
@@ -234,6 +237,7 @@ class Background2D {
         }
     }
 }
+
 
 
 /**
@@ -270,6 +274,18 @@ class Grid2D {
         this.size = settings.size;
     }
 
+    /** Gets the block calc height for a Grid2D on a 2D map. */
+    get blockCalcHeight() {
+        var ret = this._.size.y > 0 ? this._.size.y : 10;
+        ret *= this._.scale.y > 0 ? this._.scale.y : 1;
+        return ret;
+    }
+    /** Gets the block calc width for a Grid2D on a 2D map. */
+    get blockCalcWidth() {
+        var ret = this._.size.x > 0 ? this._.size.x : 10;
+        ret *= this._.scale.x > 0 ? this._.scale.x : 1;
+        return ret;
+    }
     /** Gets or sets the line color of the grid. */
     get lineColor() { return this._.lineColor; }
     set lineColor(v) { 

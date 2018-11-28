@@ -3,16 +3,18 @@
  * 
  * Core module file for GoldenEngine.
  * 
- * This file contains the main core for the module GoldenEngine.
+ * This file contains the main core for the module GoldenEngine
+ *  and the DataCache for saving resources and faster rendering.
  * 
  * @file This file defines: GoldenEngine
  * @author Patrick Goldinger
  * @license MIT
  * 
- * @version 0.1.0
+ * @version 0.1.2
  */
 
 const GOLDEN_ENGINE_JS = true;
+
 
 
 /**
@@ -28,6 +30,7 @@ class GoldenEngine {
     constructor(screen, width, height) {
         this._ = {
             controller: new Controller2D(),
+            dataCache: new DataCache(),
             doRenderLoop: false,
             map: new Map2D(GoldenEngine.getClientWidth(), GoldenEngine.getClientHeight()),
             requestID: 0,
@@ -55,6 +58,14 @@ class GoldenEngine {
     set controller(v) { 
         if (v instanceof Controller2D) {
             this._.controller = v;
+            this.prepareRenderer();
+        }
+    }
+    /** Gets or sets the data cache for the engine's objects. */
+    get dataCache() { return this._.dataCache; }
+    set dataCache(v) { 
+        if (v instanceof DataCache) {
+            this._.dataCache = v;
             this.prepareRenderer();
         }
     }
@@ -156,8 +167,33 @@ class GoldenEngine {
                 //
             }
             else if (layers[i].background.data instanceof Grid2D) {
+                /** @type {Grid2D} */
                 var grid = layers[i].background.data;
-                // #TODO: continue
+                var renderStep = new Vector2D(
+                    grid.blockCalcWidth * (this._.width / cam.width),
+                    grid.blockCalcHeight * (this._.height / cam.height)
+                );
+                var offset = new Vector2D(
+                    grid.position.x % renderStep.x,
+                    grid.position.y % renderStep.y
+                );
+                // set style parameters
+                ctx.lineWidth = grid.lineThickness;
+                ctx.strokeStyle = grid.lineColor.value;
+                // draw vertical lines
+                for (var j = offset.x; j < cam.width; j += renderStep.x) {
+                    ctx.beginPath();
+                    ctx.moveTo(j, 0);
+                    ctx.lineTo(j, this._.height);
+                    ctx.stroke();
+                }
+                // draw horizontal lines
+                for (var j = offset.y; j < cam.height; j += renderStep.y) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, j);
+                    ctx.lineTo(this._.width, j);
+                    ctx.stroke();
+                }
             }
             // draw objects
             var objects = layers[i].getObjects();
@@ -211,3 +247,115 @@ class GoldenEngine {
     }
 }
 
+
+
+/**
+ * @typedef {Object} DataCacheObjectIn
+ * @property {Image} data The image data.
+ * @property {string} id The ID of the object.
+ */
+/**
+ * @typedef {Object} DataCacheObjectOut
+ * @property {Image} data The image data.
+ * @property {string} id The ID of the object.
+ * @property {boolean} validFlag Specifies if the object with the given ID has been found.
+ */
+
+/**
+ * The data cache for game objects.
+ */
+class DataCache {
+    /**
+     * Creates a new instance of GoldenEngine DataCache.
+     * @param {DataCacheObjectIn} [initialDataCache] Initial data cache.
+     */
+    constructor(initialDataCache) {
+        this.__storage__ = {};
+    }
+
+    /** 
+     * Gets an object from cache by ID.
+     * @param {string} id The ID of the object.
+     * @returns {DataCacheObjectOut} The object by ID.
+     */
+    getObject(id) {
+        var data = new Image();
+        var validFlag = false;
+        if (typeof id === "string") {
+            if (this.__storage__.hasOwnProperty(id)) {
+                data = this.__storage__[id];
+                validFlag = true;
+            }
+        }
+        return { data: data, id: id, validFlag: validFlag };
+    }
+    /** 
+     * This function prepares the renderer to adopt to environment changes.
+     * @param {Array.<DataCacheObjectIn>} list The list as key (object-ID) => value (source-url) object.
+     * @param {function} [triggerCallback] Triggered everytime a image is loaded.
+     * @param {function} [finalCallback] Triggered when all images have loaded.
+     */
+    loadDataList(list, triggerCallback, finalCallback) {
+        if (!Array.isArray(list)) {
+            return false;
+        }
+        var storage = this.__storage__;
+        var loadedCount = 0;
+        var listLength = list.length;
+        function imageEventHandler(status) {
+            loadedCount++;
+            if (triggerCallback) triggerCallback({
+                id: this.id,
+                index: loadedCount,
+                listLength: listLength,
+                status: status
+            });
+            if (status == "success") {
+                this.error = null;
+                this.onload = null;
+                console.info("%cSuccessfully loaded image '" + this.src + "'.", "color: green");
+            }
+            else if (status == "error") {
+                console.error("Error while loading image '" + this.src + "'.");
+                storage[this.id] = new Image();
+            }
+            if (loadedCount == listLength && finalCallback)
+                finalCallback();
+        }
+        for (var i = 0; i < list.length; i++) {
+            if (list[i] === Object(list[i])) {
+                if (list[i].hasOwnProperty("id") && list[i].hasOwnProperty("src")) {
+                    var img = new Image();
+                    img.onerror = function () { imageEventHandler.call(this, "error"); };
+                    img.onload = function () { imageEventHandler.call(this, "success"); };
+                    storage[list[i].id] = img;
+                    img.id = list[i].id;
+                    img.src = list[i].src;
+                    console.info("Loading image '" + img.src + "'...");
+                }
+                else {
+                    listLength--;
+                }
+            }
+            else {
+                listLength--;
+            }
+        }
+        return true;
+    }
+    /** 
+     * Releases all objects in cache. Note that they will only be deleted
+     * once the memory is full and javascript decides to actually overwrite it.
+     * @returns {number} The number of released items.
+     */
+    releaseObjects() {
+        var n = 0;
+        for (var k in this.__storage__) {
+            if (this.__storage__.hasOwnProperty(k)) {
+                delete this.__storage__[k];
+                n++;
+            }
+        }
+        return n;
+    }
+}

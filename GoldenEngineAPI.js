@@ -26,6 +26,7 @@ const GOLDEN_ENGINE_API_JS = true;
 const GANY = -1;
 
 
+
 /**
  * Describes a Vector in a 2D scene.
  */
@@ -93,6 +94,7 @@ class Vector2D {
         return ret == null ? new Vector2D(0,0) : ret;
     }
 }
+
 
 
 /**
@@ -171,6 +173,7 @@ class Vector3D {
 }
 
 
+
 /**
  * Describes a Point in a 2D scene.
  * @property {number} x The x-coordinate of the Point.
@@ -186,6 +189,7 @@ class Point2D extends Vector2D {
         super(x, y);
     }
 }
+
 
 
 /**
@@ -205,6 +209,7 @@ class Point3D extends Vector3D {
         super(x, y, z);
     }
 }
+
 
 
 /**
@@ -232,6 +237,7 @@ class Line2D {
 }
 
 
+
 /**
  * Describes a Line in a 3D scene.
  */
@@ -257,6 +263,7 @@ class Line3D {
 }
 
 
+
 /**
  * Describes a Rotation of a ...Object2D in a 2D scene.
  */
@@ -276,6 +283,7 @@ class Rotation2D {
     get rvalue() { return this._.rvalue; }
     set rvalue(v) { if (!isNaN(v)) this._.rvalue = v; }
 }
+
 
 
 /**
@@ -301,6 +309,7 @@ class CanvasColor {
         }
     }
 }
+
 
 
 /**
@@ -352,6 +361,7 @@ class Polygon2D {
 }
 
 
+
 /**
  * Describes a PassiveObject in a 2D scene.
  */
@@ -391,7 +401,6 @@ class PassiveObject2D {
         //document.getElementById("entry").appendChild(this._._rawImageDataCanvas);
     }
 
-    /** Gets or sets the svg or image for rendering the PassiveObejct on a 2D map. */
     get data() { return this._.data; }
     set data(v) {
         if (v instanceof Image) {
@@ -460,7 +469,12 @@ class PassiveObject2D {
             this._._rawImageDataCanvas.height = dHeight;
             this._.renderHeight = dHeight;
             rctx.drawImage(this.data, 0, 0, dWidth, dHeight);
-            this._._rawImageData = rctx.getImageData(0,0,this._._rawImageDataCanvas.width,this._._rawImageDataCanvas.height);
+            if (this._._rawImageDataCanvas.width == 0 || this._._rawImageDataCanvas.height == 0) {
+                this._._rawImageData = rctx.createImageData(1,1);
+            }
+            else {
+                this._._rawImageData = rctx.getImageData(0,0,this._._rawImageDataCanvas.width,this._._rawImageDataCanvas.height);
+            }
             this._._dataURL = this._._rawImageDataCanvas.toDataURL("image/png");
             return true;
         }
@@ -481,6 +495,7 @@ class PassiveObject2D {
         return this._._dataURL;
     }
 }
+
 
 
 /**
